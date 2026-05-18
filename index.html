@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>底力练习</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #0f0f1a; color: #e0e0f0; }
+
+.menu {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 100; background: #0f0f1a;
+}
+.menu h1 {
+  font-size: 36px; font-weight: 800; letter-spacing: 3px;
+  background: linear-gradient(135deg, #667eea, #e74c3c);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+.menu p { color: rgba(255,255,255,0.35); font-size: 14px; letter-spacing: 2px; margin-bottom: 24px; }
+.mode-select { display: flex; gap: 10px; margin-bottom: 16px; }
+.mode-btn {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.4); padding: 10px 28px; border-radius: 40px;
+  font-size: 15px; font-weight: 600; cursor: pointer; letter-spacing: 1px; transition: all 0.2s;
+}
+.mode-btn.active {
+  background: linear-gradient(135deg, #667eea, #764ba2); border-color: transparent;
+  color: #fff; box-shadow: 0 4px 16px rgba(102,126,234,0.3);
+}
+.custom-inputs { display: none; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; justify-content: center; }
+.custom-inputs.show { display: flex; }
+.custom-inputs .input-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.custom-inputs label { font-size: 12px; color: rgba(255,255,255,0.35); letter-spacing: 1px; }
+.custom-inputs input {
+  width: 100px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px; padding: 10px 12px; color: #fff; font-size: 18px; font-weight: 700;
+  text-align: center; outline: none;
+}
+.custom-inputs input:focus { border-color: #667eea; }
+.custom-inputs input::-webkit-outer-spin-button,
+.custom-inputs input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.custom-inputs .hint { font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 2px; }
+
+.start-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2); border: none; color: #fff;
+  padding: 18px 64px; border-radius: 60px; font-size: 20px; font-weight: 700;
+  letter-spacing: 2px; cursor: pointer; transition: all 0.25s;
+  box-shadow: 0 8px 28px rgba(102,126,234,0.35);
+}
+.start-btn:active { transform: scale(0.95); }
+.best { margin-top: 20px; color: #f39c12; font-size: 15px; letter-spacing: 1px; }
+
+.game-area { position: absolute; inset: 0; display: none; touch-action: none; }
+.game-area.active { display: block; }
+
+.hud {
+  position: absolute; top: 0; left: 0; right: 0;
+  padding: 14px 20px; background: rgba(0,0,0,0.5); backdrop-filter: blur(12px);
+  display: flex; justify-content: space-between; align-items: center;
+  z-index: 20; font-size: 14px; color: rgba(255,255,255,0.5);
+}
+.hud strong { color: #fff; font-weight: 700; }
+
+.center-msg {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  font-size: 30px; font-weight: 800; letter-spacing: 2px;
+  pointer-events: none; z-index: 15; text-align: center;
+}
+
+.tap-block {
+  position: absolute; border-radius: 4px; touch-action: none; z-index: 5;
+}
+
+.judge-text {
+  position: fixed; font-size: 22px; font-weight: 800; letter-spacing: 2px;
+  pointer-events: none; z-index: 30;
+  animation: judgeFloat 0.4s ease forwards;
+}
+@keyframes judgeFloat {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-40px) scale(1.2); }
+}
+
+.key-hints {
+  position: absolute; left: 0; right: 0; bottom: 12px;
+  display: flex; justify-content: space-around; padding: 0 3px; z-index: 3; pointer-events: none;
+}
+.key-hints span {
+  display: flex; align-items: center; justify-content: center;
+  width: 48px; height: 36px; border-radius: 8px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+  font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.2); font-family: monospace;
+}
+
+.judge-line {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: rgba(255,255,255,0.12); z-index: 4; pointer-events: none;
+}
+.judge-line::before {
+  content: '▼'; position: absolute; right: 12px; top: -14px;
+  font-size: 10px; color: rgba(255,255,255,0.15);
+}
+
+.result-overlay {
+  display: none; position: absolute; inset: 0;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+  z-index: 100; justify-content: center; align-items: center; touch-action: auto;
+}
+.result-overlay.show { display: flex; }
+.result-box {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 28px; padding: 36px 40px; text-align: center; max-width: 380px; width: 88%;
+}
+.result-box .big-num { font-size: 48px; font-weight: 800; color: #2ecc71; }
+.result-box .stat-row { display: flex; justify-content: center; gap: 32px; margin: 18px 0; }
+.result-box .stat-item .num { font-size: 28px; font-weight: 800; }
+.result-box .stat-item .label { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 2px; }
+.result-box .comment { margin: 14px 0 18px; font-size: 18px; letter-spacing: 1px; }
+.result-box .btn {
+  background: linear-gradient(135deg, #667eea, #764ba2); border: none; color: #fff;
+  padding: 14px 44px; border-radius: 40px; font-size: 16px; font-weight: 600;
+  cursor: pointer; letter-spacing: 1px; transition: all 0.25s; margin: 4px;
+}
+.result-box .btn:active { transform: scale(0.95); }
+.result-box .btn-plain { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); padding: 10px 32px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- ===== 菜单 ===== -->
+<div class="menu" id="menu">
+  <h1>👆 底力练习</h1>
+  <p>手机端建议浏览器全屏模式打开，横屏游玩</p>
+  <div class="mode-select">
+    <button class="mode-btn active" data-mode="progressive">🎮 渐进</button>
+    <button class="mode-btn" data-mode="custom">⚙️ 自定义</button>
+  </div>
+  <div class="custom-inputs" id="customInputs">
+    <div class="input-group">
+      <label>每秒方块数</label>
+      <input type="number" id="inputRate" value="3" min="0.5" step="0.5">
+    </div>
+    <div class="input-group">
+      <label>BPM</label>
+      <input type="number" id="inputBpm" value="180" min="30" step="5">
+    </div>
+    <div class="hint">修改任一自动换算</div>
+  </div>
+  <button class="start-btn" id="startBtn">开始挑战</button>
+  <div class="best" id="bestDisplay">—</div>
+</div>
+
+<!-- ===== 游戏区域 ===== -->
+<div class="game-area" id="gameArea">
+  <div class="hud">
+    <span>已按 <strong id="hudScore">0</strong></span>
+    <span>效率 <strong id="hudRate">0</strong>/s</span>
+    <span>目标 <strong id="hudTarget" style="color:#667eea;">0</strong>/s</span>
+    <span>漏 <strong id="hudMiss" style="color:#e74c3c;">0/5</strong></span>
+  </div>
+  <div class="judge-line" id="judgeLine"></div>
+  <div class="center-msg" id="centerMsg"></div>
+  <div class="key-hints"><span>S</span><span>D</span><span>J</span><span>K</span></div>
+  <div class="result-overlay" id="resultOverlay">
+    <div class="result-box">
+      <div class="big-num" id="resultRate">0</div>
+      <div style="font-size:13px; color:rgba(255,255,255,0.3); letter-spacing:1px;">块/秒</div>
+      <div class="stat-row">
+        <div class="stat-item"><div class="num" id="resultScore" style="color:#3498db;">0</div><div class="label">总点击</div></div>
+        <div class="stat-item"><div class="num" id="resultTime" style="color:#f39c12;">0</div><div class="label">存活秒数</div></div>
+      </div>
+      <div class="comment" id="resultComment"></div>
+      <button class="btn" id="restartBtn">再来一次</button>
+      <button class="btn btn-plain" id="backBtn">返回菜单</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== 音效 ======
+let audioCtx = null;
+let metronomeTimer = null;
+
+function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+function playClick(freq, vol, dur) {
+  try {
+    initAudio();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    g.gain.setValueAtTime(vol, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + dur);
+  } catch(e) {}
+}
+function playBeat() { playClick(1200, 0.12, 0.05); playClick(600, 0.04, 0.06); }
+function playHit() { playClick(1800, 0.10, 0.04); }
+function playMiss() { playClick(200, 0.15, 0.15); }
+
+function startMetronome(bpm) {
+  stopMetronome();
+  const interval = 60000 / bpm;
+  playBeat();
+  (function tick() {
+    if (!running) return;
+    metronomeTimer = setTimeout(() => { playBeat(); tick(); }, interval);
+  })();
+}
+function stopMetronome() { if (metronomeTimer) { clearTimeout(metronomeTimer); metronomeTimer = null; } }
+
+// ====== 存储最佳 ======
+const BEST_KEY = 'multitap_best';
+let bestRate = parseFloat(localStorage.getItem(BEST_KEY)) || 0;
+updateBestDisplay();
+function updateBestDisplay() { document.getElementById('bestDisplay').textContent = bestRate > 0 ? `最佳: ${bestRate.toFixed(1)} 块/秒` : '—'; }
+function saveBest(rate) { if (rate > bestRate) { bestRate = rate; localStorage.setItem(BEST_KEY, String(rate)); updateBestDisplay(); } }
+
+function getComment(rate) {
+  if (rate >= 12) return '🔥 触手怪！十指全开恐怖如斯';
+  if (rate >= 9) return '🫡 单身二十年手速，佩服';
+  if (rate >= 7) return '💪 可以，手指挺灵活';
+  if (rate >= 5) return '👌 正常手速';
+  if (rate >= 3) return '🐢 有点慢';
+  return '💀 拉完了';
+}
+
+// ====== 常量 ======
+const BLOCK_SIZE = 80, LANE_COUNT = 4;
+const JUDGE_LINE_OFFSET = 100;
+const PERFECT_RANGE = 15, GOOD_RANGE = 30, MISS_RANGE = 50;
+const MAX_MISS = 5;
+const STAGE_DURATION = 5000;
+const RATE_INCREMENT = 0.2;
+
+// ====== 状态 ======
+let running = false, score = 0, missCount = 0, startTime = 0;
+let gameMode = 'progressive';
+let currentRate = 1.25;
+let spawnTimer = null, stageTimer = null;
+// 滑动窗口：记录每次命中的时间戳，用于计算近期效率
+let hitTimestamps = [];
+let peakRate = 0;  // 记录本局出现过的最快窗口效率
+let laneBlocks = [[], [], [], []];
+let allTimers = [];
+
+function clearAllTimers() {
+  allTimers.forEach(t => { try { clearTimeout(t); } catch(e){} try { clearInterval(t); } catch(e){} });
+  allTimers = [];
+}
+
+function getLaneInfo() {
+  const w = window.innerWidth;
+  const gap = 6, totalGap = gap * (LANE_COUNT - 1), laneW = (w - totalGap) / LANE_COUNT;
+  const lanes = [];
+  for (let i = 0; i < LANE_COUNT; i++) lanes.push(i * (laneW + gap));
+  return { laneW, lanes };
+}
+
+function showJudge(text, color) {
+  const el = document.createElement('div');
+  el.className = 'judge-text'; el.textContent = text; el.style.color = color;
+  el.style.left = '50%'; el.style.top = (window.innerHeight - JUDGE_LINE_OFFSET - 60) + 'px';
+  el.style.transform = 'translateX(-50%)';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 400);
+}
+
+function spawnBlock() {
+  if (!running) return;
+  // 不 round，用精确浮点数避免累积误差
+  spawnTimer = setTimeout(spawnBlock, 1000 / currentRate);
+
+  // 只在首次 spawn 时启动节拍器，之后不再重置
+  if (!metronomeTimer) startMetronome(Math.round(currentRate * 60));
+  // 更新目标速率显示
+  document.getElementById('hudTarget').textContent = currentRate.toFixed(1);
+
+  const { laneW, lanes } = getLaneInfo();
+  const lane = Math.floor(Math.random() * LANE_COUNT);
+  const block = document.createElement('div');
+  block.className = 'tap-block';
+  block.style.width = laneW + 'px';
+  block.style.height = BLOCK_SIZE + 'px';
+  block.style.left = lanes[lane] + 'px';
+  block.style.top = '60px';
+  block.style.background = `hsl(${Math.floor(Math.random() * 360)}, 60%, 35%)`;
+
+  document.getElementById('gameArea').appendChild(block);
+  laneBlocks[lane].push(block);
+
+  const judgeY = window.innerHeight - JUDGE_LINE_OFFSET;
+  let judged = false, posY = 60;
+
+  const fall = setInterval(() => {
+    posY += 5;
+    if (block.parentNode) block.style.top = posY + 'px';
+    if (!judged && posY > judgeY + MISS_RANGE) {
+      judged = true; clearInterval(fall);
+      if (block.parentNode) {
+        block.style.transition = '0.15s'; block.style.background = 'rgba(231,76,60,0.3)';
+        setTimeout(() => { if (block.parentNode) block.remove(); }, 150);
+        const idx = laneBlocks[lane].indexOf(block);
+        if (idx >= 0) laneBlocks[lane].splice(idx, 1);
+      }
+      missCount++;
+      document.getElementById('hudMiss').textContent = missCount + '/' + MAX_MISS;
+      playMiss();
+      if (missCount >= MAX_MISS) gameOver();
+    }
+  }, 16);
+
+  block._fall = fall; block._lane = lane; block._judgeY = judgeY;
+  block._judged = () => judged;
+  block._markJudged = () => { judged = true; };
+}
+
+function handleTap(positions) {
+  for (const pos of positions) {
+    const { laneW, lanes } = getLaneInfo();
+    let lane = -1;
+    for (let i = 0; i < LANE_COUNT; i++) {
+      if (pos.x >= lanes[i] && pos.x <= lanes[i] + laneW) { lane = i; break; }
+    }
+    if (lane < 0) continue;
+
+    const candidates = laneBlocks[lane].filter(b => b.parentNode && !b._judged());
+    if (!candidates.length) continue;
+
+    let best = candidates[0], bestDist = Infinity;
+    for (const c of candidates) {
+      const d = Math.abs(parseFloat(c.style.top) + BLOCK_SIZE / 2 - c._judgeY);
+      if (d < bestDist) { bestDist = d; best = c; }
+    }
+
+    let text, color;
+    if (bestDist <= PERFECT_RANGE) { text = 'PERFECT'; color = '#2ecc71'; }
+    else if (bestDist <= GOOD_RANGE) { text = 'GOOD'; color = '#f39c12'; }
+    else if (bestDist <= MISS_RANGE) { text = 'LATE'; color = '#3498db'; }
+    else continue;
+
+    best._markJudged();
+    clearInterval(best._fall);
+    best.style.transition = '0.1s'; best.style.background = 'rgba(255,255,255,0.4)';
+    setTimeout(() => { if (best.parentNode) best.remove(); }, 100);
+    const idx = laneBlocks[lane].indexOf(best);
+    if (idx >= 0) laneBlocks[lane].splice(idx, 1);
+
+    showJudge(text, color); playHit();
+    score++;
+    // 滑动窗口效率：只算最近 3 秒的命中数
+    const now = performance.now();
+    hitTimestamps.push(now);
+    // 清掉 3 秒前的记录
+    while (hitTimestamps.length > 0 && hitTimestamps[0] < now - 3000) hitTimestamps.shift();
+    const windowRate = (hitTimestamps.length / 3).toFixed(1);
+    if (parseFloat(windowRate) > peakRate) peakRate = parseFloat(windowRate);
+    document.getElementById('hudScore').textContent = score;
+    document.getElementById('hudRate').textContent = windowRate;
+  }
+}
+
+function advanceStage() {
+  if (!running || gameMode !== 'progressive') return;
+  currentRate += RATE_INCREMENT;
+  document.getElementById('hudTarget').textContent = currentRate.toFixed(1);
+  // 阶段变更时更新节拍器 BPM
+  stopMetronome();
+  startMetronome(Math.round(currentRate * 60));
+  stageTimer = setTimeout(advanceStage, STAGE_DURATION);
+}
+
+function gameOver() {
+  if (!running) return;
+  running = false;
+  stopMetronome();
+  if (spawnTimer) { clearTimeout(spawnTimer); spawnTimer = null; }
+  if (stageTimer) { clearTimeout(stageTimer); stageTimer = null; }
+  laneBlocks = [[], [], [], []];
+  document.querySelectorAll('.tap-block').forEach(el => {
+    if (el._fall) clearInterval(el._fall);
+    el.remove();
+  });
+  const elapsed = (Date.now() - startTime) / 1000;
+  const showRate = peakRate > 0 ? peakRate : (elapsed > 0 ? score / elapsed : 0);
+  saveBest(showRate);
+  document.getElementById('resultRate').textContent = showRate.toFixed(1);
+  document.getElementById('resultScore').textContent = score;
+  document.getElementById('resultTime').textContent = Math.floor(elapsed);
+  document.getElementById('resultComment').textContent = getComment(showRate);
+  document.getElementById('resultOverlay').classList.add('show');
+}
+
+function startGame() {
+  initAudio();
+  const modeBtn = document.querySelector('.mode-btn.active');
+  gameMode = modeBtn ? modeBtn.dataset.mode : 'progressive';
+  currentRate = gameMode === 'custom' ? Math.max(0.5, parseFloat(document.getElementById('inputRate').value) || 1) : 1.25;
+
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('gameArea').classList.add('active');
+  document.getElementById('resultOverlay').classList.remove('show');
+  document.getElementById('centerMsg').textContent = '';
+
+  score = 0; missCount = 0; running = true; startTime = Date.now();
+  hitTimestamps = []; peakRate = 0;
+  laneBlocks = [[], [], [], []];
+  document.querySelectorAll('.tap-block').forEach(el => el.remove());
+
+  document.getElementById('judgeLine').style.top = (window.innerHeight - JUDGE_LINE_OFFSET) + 'px';
+  document.getElementById('hudScore').textContent = '0';
+  document.getElementById('hudRate').textContent = '0';
+  document.getElementById('hudTarget').textContent = currentRate.toFixed(1);
+  document.getElementById('hudMiss').textContent = '0/' + MAX_MISS;
+
+  const msg = document.getElementById('centerMsg');
+  msg.style.color = '#fff'; msg.textContent = '3';
+  setTimeout(() => msg.textContent = '2', 600);
+  setTimeout(() => msg.textContent = '1', 1200);
+  setTimeout(() => {
+    msg.textContent = 'GO!'; msg.style.color = '#2ecc71';
+    startTime = Date.now();
+    if (gameMode === 'progressive') stageTimer = setTimeout(advanceStage, STAGE_DURATION);
+    spawnBlock();
+  }, 1800);
+  setTimeout(() => { if (running) msg.textContent = ''; }, 2300);
+}
+
+function backToMenu() {
+  running = false; stopMetronome();
+  if (spawnTimer) { clearTimeout(spawnTimer); spawnTimer = null; }
+  if (stageTimer) { clearTimeout(stageTimer); stageTimer = null; }
+  laneBlocks = [[], [], [], []];
+  document.querySelectorAll('.tap-block').forEach(el => { if (el._fall) clearInterval(el._fall); el.remove(); });
+  document.getElementById('gameArea').classList.remove('active');
+  document.getElementById('menu').style.display = '';
+  document.getElementById('resultOverlay').classList.remove('show');
+}
+
+function restart() { document.getElementById('resultOverlay').classList.remove('show'); startGame(); }
+
+// ====== 事件 ======
+document.getElementById('startBtn').addEventListener('pointerdown', e => { e.preventDefault(); startGame(); });
+document.getElementById('restartBtn').addEventListener('pointerdown', e => { e.preventDefault(); restart(); });
+document.getElementById('backBtn').addEventListener('pointerdown', e => { e.preventDefault(); backToMenu(); });
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('pointerdown', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('customInputs').classList.toggle('show', btn.dataset.mode === 'custom');
+  });
+});
+
+document.getElementById('inputRate').addEventListener('input', () => {
+  const r = Math.max(0.5, parseFloat(document.getElementById('inputRate').value) || 1);
+  document.getElementById('inputBpm').value = Math.round(r * 60);
+});
+document.getElementById('inputBpm').addEventListener('input', () => {
+  const bpm = Math.max(30, parseFloat(document.getElementById('inputBpm').value) || 60);
+  // 直接算 rate = bpm/60，保留一位小数
+  const rate = Math.round(bpm / 60 * 10) / 10;
+  document.getElementById('inputRate').value = rate;
+  // 如果 rate*60 和 bpm 偏差超过 3，回写修正后的 bpm
+  const actualBpm = Math.round(rate * 60);
+  if (Math.abs(actualBpm - bpm) > 3) {
+    document.getElementById('inputBpm').value = actualBpm;
+  }
+});
+
+document.getElementById('gameArea').addEventListener('touchstart', e => {
+  if (!running) return; e.preventDefault();
+  const arr = [];
+  for (let t of e.changedTouches) arr.push({ x: t.clientX, y: t.clientY });
+  handleTap(arr);
+}, { passive: false });
+
+document.getElementById('gameArea').addEventListener('mousedown', e => {
+  if (!running) return;
+  handleTap([{ x: e.clientX, y: e.clientY }]);
+});
+
+const KEY_MAP = { s: 0, S: 0, d: 1, D: 1, j: 2, J: 2, k: 3, K: 3 };
+document.addEventListener('keydown', e => {
+  const lane = KEY_MAP[e.key];
+  if (lane === undefined || !running) return;
+  e.preventDefault();
+  const { laneW, lanes } = getLaneInfo();
+  handleTap([{ x: lanes[lane] + laneW / 2, y: 0 }]);
+});
+
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+document.addEventListener('contextmenu', e => e.preventDefault());
+</script>
+</body>
+</html>
